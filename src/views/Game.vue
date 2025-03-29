@@ -41,6 +41,7 @@ import { useRouter } from 'vue-router';
 import { Trip } from '@/models/Trip';
 import { Vehicle } from '@/models/Vehicle';
 import redCarImage from '@/assets/red-car.png'; // Import the red-car asset
+import mountainImage from '@/assets/mountain.png'; // Import the mountain asset
 
 const isRunning = ref(false);
 let lastTimestamp = 0;
@@ -56,6 +57,9 @@ const distancePercentage = computed(() => ((trip.getDistance() / trip.goal) * 10
 let roadLineOffset = 0; // Offset for the road lines
 const carImage = new Image();
 carImage.src = redCarImage; // Preload the car image
+
+const mountainImageElement = new Image();
+mountainImageElement.src = mountainImage; // Preload the mountain image
 
 let carPositionX = 0; // Horizontal position of the car relative to the center of the road
 const carMaxOffset = 100; // Maximum horizontal offset from the center of the road
@@ -122,6 +126,14 @@ function drawCanvas() {
   // Draw the sky
   ctx.fillStyle = 'skyblue';
   ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
+
+  // Draw the mountain
+  const progress = trip.getDistance() / trip.goal; // Calculate progress as a percentage
+  const mountainWidth = canvas.width * (0.5 + progress); // Scale the mountain width
+  const mountainHeight = canvas.width * (0.5 + progress); // Scale the mountain height
+  const mountainX = (canvas.width - mountainWidth) / 2; // Center the mountain horizontally
+  const mountainY = canvas.height / 2 - mountainHeight * (1 - progress); // Move the mountain down as progress increases
+  ctx.drawImage(mountainImageElement, mountainX, mountainY, mountainWidth, mountainHeight);
 
   // Draw the grass
   ctx.fillStyle = 'green';
