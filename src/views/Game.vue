@@ -40,6 +40,7 @@ import { ref, onMounted, onUnmounted, computed, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { Trip } from '@/models/Trip';
 import { Vehicle } from '@/models/Vehicle';
+import redCarImage from '@/assets/red-car.png'; // Import the red-car asset
 
 const isRunning = ref(false);
 let lastTimestamp = 0;
@@ -53,6 +54,8 @@ const fuelDisplay = computed(() => vehicle.getFuelLevel().toFixed(2));
 const distancePercentage = computed(() => ((trip.getDistance() / trip.goal) * 100).toFixed(2));
 
 let roadLineOffset = 0; // Offset for the road lines
+const carImage = new Image();
+carImage.src = redCarImage; // Preload the car image
 
 function gameTick(timestamp: number) {
   if (!isRunning.value) return;
@@ -127,9 +130,10 @@ function drawCanvas() {
   // Restore the clipping region
   ctx.restore();
 
-  // Draw the vehicle
-  ctx.fillStyle = 'blue';
-  ctx.fillRect(roadX + roadWidth / 2 - 25, canvas.height - 80, 50, 30); // x, y, width, height
+  // Draw the vehicle (red car)
+  const carWidth = 50;
+  const carHeight = 50;
+  ctx.drawImage(carImage, roadX + roadWidth / 2 - carWidth / 2, canvas.height - 80, carWidth, carHeight);
 }
 
 function startAccelerating() {
