@@ -130,10 +130,11 @@ function drawCanvas() {
   // Restore the clipping region
   ctx.restore();
 
-  // Draw the vehicle (red car)
+  // Draw the vehicle (red car) with vibration
   const carWidth = 50;
   const carHeight = 50;
-  ctx.drawImage(carImage, roadX + roadWidth / 2 - carWidth / 2, canvas.height - 80, carWidth, carHeight);
+  const vibration = Math.random() * vehicle.getSpeed() * 0.02 - vehicle.getSpeed() * 0.01; // Random vibration based on speed
+  ctx.drawImage(carImage, roadX + roadWidth / 2 - carWidth / 2, canvas.height - 80 + vibration, carWidth, carHeight);
 }
 
 function startAccelerating() {
