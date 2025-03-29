@@ -21,16 +21,16 @@
         <v-icon left>{{ isRunning ? 'mdi-pause' : 'mdi-play' }}</v-icon>
         {{ isRunning ? 'Pause' : 'Play' }}
       </v-btn>
-      <v-btn
-        class="ma-2"
-        color="success"
-        depressed
-        @mousedown="startAccelerating"
-        @mouseup="stopAccelerating"
-        @mouseleave="stopAccelerating"
-      >
-        Accelerate
-      </v-btn>
+      <div class="mt-4">
+        <h2 class="text-h5 font-weight-bold">Controls</h2>
+        <p class="text-body-1">Use the following keys to control your vehicle:</p>
+        <ul class="text-left">
+          <li><strong>Arrow Up:</strong> Accelerate</li>
+          <li><strong>Arrow Down:</strong> Brake</li>
+          <li><strong>Arrow Left:</strong> Steer Left</li>
+          <li><strong>Arrow Right:</strong> Steer Right</li>
+        </ul>
+      </div>
     </div>
   </v-container>
 </template>
