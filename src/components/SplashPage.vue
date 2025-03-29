@@ -57,7 +57,7 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 
 function startNewGame() {
-  router.push({ name: 'Game' });
+  router.push('/game'); // Use the path instead of the route name
 }
 
 function continueGame() {

@@ -17,7 +17,7 @@ const router = useRouter();
 
 function goToSplash() {
   try {
-    router.push({ name: 'SplashPage' });
+    router.push('/'); // Use the path instead of the route name
   } catch (error) {
     console.error('Failed to navigate to SplashPage:', error);
     alert('Failed to navigate to the main menu. Please try again.');

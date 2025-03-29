@@ -64,7 +64,7 @@ function gameTick(timestamp: number) {
   if (trip.isGoalReached()) {
     console.log('Goal reached! Game over.');
     isRunning.value = false;
-    router.push({ name: 'GameFinished' }); // Redirect to the "Game Finished" page
+    router.push('/game-finished'); // Use the path instead of the route name
     return;
   }
 
