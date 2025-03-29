@@ -57,6 +57,9 @@ let roadLineOffset = 0; // Offset for the road lines
 const carImage = new Image();
 carImage.src = redCarImage; // Preload the car image
 
+let carPositionX = 0; // Horizontal position of the car relative to the center of the road
+const carMaxOffset = 100; // Maximum horizontal offset from the center of the road
+
 function gameTick(timestamp: number) {
   if (!isRunning.value) return;
 
@@ -134,7 +137,13 @@ function drawCanvas() {
   const carWidth = 50;
   const carHeight = 50;
   const vibration = Math.random() * vehicle.getSpeed() * 0.02 - vehicle.getSpeed() * 0.01; // Random vibration based on speed
-  ctx.drawImage(carImage, roadX + roadWidth / 2 - carWidth / 2, canvas.height - 80 + vibration, carWidth, carHeight);
+  ctx.drawImage(
+    carImage,
+    roadX + roadWidth / 2 - carWidth / 2 + carPositionX,
+    canvas.height - 80 + vibration,
+    carWidth,
+    carHeight
+  );
 }
 
 function startAccelerating() {
@@ -145,11 +154,31 @@ function stopAccelerating() {
   vehicle.stopAccelerating();
 }
 
-function toggleGame() {
-  isRunning.value = !isRunning.value;
-  if (isRunning.value) {
-    lastTimestamp = performance.now();
-    requestAnimationFrame(gameTick);
+function applyBrakes() {
+  vehicle.speed = Math.max(0, vehicle.speed * 0.9); // Reduce speed by 10 units, but not below 0
+}
+
+function releaseBrakes() {
+  // Logic for releasing brakes can be added here if needed
+}
+
+function handleKeyDown(event: KeyboardEvent) {
+  if (event.key === 'ArrowUp') {
+    startAccelerating();
+  } else if (event.key === 'ArrowLeft') {
+    carPositionX = Math.max(carPositionX - 10, -carMaxOffset); // Move left, but limit to max offset
+  } else if (event.key === 'ArrowRight') {
+    carPositionX = Math.min(carPositionX + 10, carMaxOffset); // Move right, but limit to max offset
+  } else if (event.key === 'ArrowDown') {
+    applyBrakes();
+  }
+}
+
+function handleKeyUp(event: KeyboardEvent) {
+  if (event.key === 'ArrowUp') {
+    stopAccelerating();
+  } else if (event.key === 'ArrowDown') {
+    releaseBrakes();
   }
 }
 
@@ -157,9 +186,14 @@ onMounted(() => {
   isRunning.value = true;
   lastTimestamp = performance.now();
   requestAnimationFrame(gameTick);
+
+  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keyup', handleKeyUp);
 });
 
 onUnmounted(() => {
   isRunning.value = false;
+  window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('keyup', handleKeyUp);
 });
 </script>
