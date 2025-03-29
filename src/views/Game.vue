@@ -59,6 +59,21 @@ carImage.src = redCarImage; // Preload the car image
 
 let carPositionX = 0; // Horizontal position of the car relative to the center of the road
 const carMaxOffset = 100; // Maximum horizontal offset from the center of the road
+let carMomentumX = 0; // Horizontal momentum of the car
+const carMomentumDecay = 0.95; // Decay factor for momentum
+const carAccelerationX = 1; // Horizontal acceleration when pressing left or right
+
+let isMovingLeft = false; // Track if the left arrow key is being held
+let isMovingRight = false; // Track if the right arrow key is being held
+const carAccelerationRate = 0.1; // Rate at which momentum increases when holding a key
+
+function toggleGame() {
+  isRunning.value = !isRunning.value;
+  if (isRunning.value) {
+    lastTimestamp = performance.now();
+    requestAnimationFrame(gameTick);
+  }
+}
 
 function gameTick(timestamp: number) {
   if (!isRunning.value) return;
@@ -69,6 +84,17 @@ function gameTick(timestamp: number) {
   vehicle.onTick(delta); // Update vehicle stats based on physics
   const distanceTraveled = vehicle.getSpeed() * delta; // Speed * time in seconds
   trip.updateDistance(distanceTraveled);
+
+  // Update horizontal momentum based on key presses
+  if (isMovingLeft) {
+    carMomentumX = Math.max(carMomentumX - carAccelerationRate, -carMaxOffset); // Gradually increase left momentum
+  } else if (isMovingRight) {
+    carMomentumX = Math.min(carMomentumX + carAccelerationRate, carMaxOffset); // Gradually increase right momentum
+  }
+
+  // Apply momentum decay and update car position
+  carMomentumX *= carMomentumDecay; // Apply decay to momentum
+  carPositionX = Math.max(-carMaxOffset, Math.min(carMaxOffset, carPositionX + carMomentumX)); // Update position with bounds
 
   if (trip.isGoalReached()) {
     console.log('Goal reached! Game over.');
@@ -166,9 +192,9 @@ function handleKeyDown(event: KeyboardEvent) {
   if (event.key === 'ArrowUp') {
     startAccelerating();
   } else if (event.key === 'ArrowLeft') {
-    carPositionX = Math.max(carPositionX - 10, -carMaxOffset); // Move left, but limit to max offset
+    isMovingLeft = true; // Start moving left
   } else if (event.key === 'ArrowRight') {
-    carPositionX = Math.min(carPositionX + 10, carMaxOffset); // Move right, but limit to max offset
+    isMovingRight = true; // Start moving right
   } else if (event.key === 'ArrowDown') {
     applyBrakes();
   }
@@ -177,6 +203,10 @@ function handleKeyDown(event: KeyboardEvent) {
 function handleKeyUp(event: KeyboardEvent) {
   if (event.key === 'ArrowUp') {
     stopAccelerating();
+  } else if (event.key === 'ArrowLeft') {
+    isMovingLeft = false; // Stop moving left
+  } else if (event.key === 'ArrowRight') {
+    isMovingRight = false; // Stop moving right
   } else if (event.key === 'ArrowDown') {
     releaseBrakes();
   }
