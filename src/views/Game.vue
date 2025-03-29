@@ -3,6 +3,7 @@
     <div class="text-center">
       <h1 class="text-h2 font-weight-bold">Driving Up the Mountain</h1>
       <p class="text-body-1">You're behind the wheel, climbing the treacherous road to the summit. The path is rough, and the higher you go, the harder it gets. Keep an eye on your car’s health—breakdowns, flat tires, and engine trouble are just around the corner. Collect coins and upgrades to keep your vehicle running and push forward. Can you reach the top, or will the mountain stop you in your tracks? Stay focused, stay alive!</p>
+      <canvas id="gameCanvas" width="800" height="400" style="border: 1px solid black;"></canvas>
       <p class="text-body-1 font-weight-bold">Distance Traveled: {{ distanceDisplay }} meters</p>
       <p class="text-body-1 font-weight-bold">Vehicle Speed: {{ speedDisplay }} km/h</p>
       <p class="text-body-1 font-weight-bold">Fuel Level: {{ fuelDisplay }}%</p>
@@ -44,12 +45,14 @@ const isRunning = ref(false);
 let lastTimestamp = 0;
 const router = useRouter();
 const trip = reactive(new Trip(0, 1000)); // Initial distance: 0, goal: 1000 meters
-const vehicle = reactive(new Vehicle(10, 100, 50, 5, 2)); // Initial speed: 10, fuel: 100%, max speed: 50, acceleration: 5, drag: 2
+const vehicle = reactive(new Vehicle(0, 100, 200, 5, 2)); // Initial speed: 0, fuel: 100%, max speed: 50, acceleration: 5, drag: 2
 
 const distanceDisplay = computed(() => trip.getDistance().toFixed(2));
-const speedDisplay = computed(() => (vehicle.getSpeed() * 3.6).toFixed(2)); // Convert m/s to km/h
+const speedDisplay = computed(() => (vehicle.getSpeed()).toFixed(2)); // km/h
 const fuelDisplay = computed(() => vehicle.getFuelLevel().toFixed(2));
 const distancePercentage = computed(() => ((trip.getDistance() / trip.goal) * 100).toFixed(2));
+
+let roadLineOffset = 0; // Offset for the road lines
 
 function gameTick(timestamp: number) {
   if (!isRunning.value) return;
@@ -68,8 +71,65 @@ function gameTick(timestamp: number) {
     return;
   }
 
+  drawCanvas(); // Update the canvas on each tick
+
   console.log(`Distance traveled: ${trip.getDistance()} meters, Speed: ${vehicle.getSpeed()} m/s, Fuel level: ${vehicle.getFuelLevel()}%`);
   requestAnimationFrame(gameTick);
+}
+
+function drawCanvas() {
+  const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  // Clear the canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw the sky
+  ctx.fillStyle = 'skyblue';
+  ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
+
+  // Draw the grass
+  ctx.fillStyle = 'green';
+  ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+
+  // Draw the road
+  ctx.fillStyle = 'gray';
+  const roadWidth = canvas.width / 3;
+  const roadX = (canvas.width - roadWidth) / 2;
+  ctx.fillRect(roadX, canvas.height / 2, roadWidth, canvas.height / 2);
+
+  // Clip to the road area
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(roadX, canvas.height / 2, roadWidth, canvas.height / 2);
+  ctx.clip();
+
+  // Draw lane markings
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 4;
+  const laneMarkingHeight = 20;
+  const laneMarkingGap = 20;
+  roadLineOffset += vehicle.getSpeed() * 0.1; // Adjust the offset based on the vehicle's speed
+  if (roadLineOffset > (laneMarkingHeight + laneMarkingGap)) {
+    roadLineOffset = 0; // Reset the offset when it exceeds the total marking height
+  }
+
+  for (let y = canvas.height / 2 + roadLineOffset; y < canvas.height; y += laneMarkingHeight + laneMarkingGap) {
+    ctx.beginPath();
+    ctx.moveTo(roadX + roadWidth / 2, y);
+    ctx.lineTo(roadX + roadWidth / 2, y + laneMarkingHeight);
+    ctx.stroke();
+  }
+
+  // Restore the clipping region
+  ctx.restore();
+
+  // Draw the vehicle
+  ctx.fillStyle = 'blue';
+  ctx.fillRect(roadX + roadWidth / 2 - 25, canvas.height - 80, 50, 30); // x, y, width, height
 }
 
 function startAccelerating() {
