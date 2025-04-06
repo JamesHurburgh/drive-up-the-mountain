@@ -40,15 +40,36 @@ import { ref, onMounted, onUnmounted, computed, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { Trip } from '@/models/Trip';
 import { Vehicle } from '@/models/Vehicle';
+import { Element } from '@/models/Element';
 import { RoadSurface, getSurfaceEffect } from '@/models/RoadSurface';
 import redCarImage from '@/assets/red-car.png';
-import mountainImage from '@/assets/mountain.png';
+
+// Import rock assets
+import rock1 from '@/assets/rock-1.png';
+import rock2 from '@/assets/rock-2.png';
+import rock3 from '@/assets/rock-3.png';
+import rock4 from '@/assets/rock-4.png';
+import rock5 from '@/assets/rock-5.png';
+import rock6 from '@/assets/rock-6.png';
+import rock7 from '@/assets/rock-7.png';
+import rock8 from '@/assets/rock-8.png';
+import rock9 from '@/assets/rock-9.png';
+
+const rockSprites = [rock1, rock2, rock3, rock4, rock5, rock6, rock7, rock8, rock9];
 
 const isRunning = ref(false);
 let lastTimestamp = 0;
 const router = useRouter();
 const trip = reactive(new Trip(0, 10000));
 const vehicle = reactive(new Vehicle(0, 100, 200, 5, 2));
+
+// Generate rocks at random locations every 100 meters
+for (let i = 100; i < trip.goal; i += 100) {
+  const randomHorizontalPosition = Math.random() * 2 - 1; // Random value between -1 (far left) and 1 (far right)
+  const randomSize = Math.random() * 30 + 40; // Random size between 40 and 70 pixels
+  const randomRockSprite = rockSprites[Math.floor(Math.random() * rockSprites.length)]; // Randomly select a rock sprite
+  trip.addElement(new Element(i, randomSize, randomRockSprite, randomHorizontalPosition));
+}
 
 const distanceDisplay = computed(() => trip.getDistance().toFixed(2));
 const speedDisplay = computed(() => (vehicle.getSpeed()).toFixed(2));
@@ -58,9 +79,6 @@ const distancePercentage = computed(() => ((trip.getDistance() / trip.goal) * 10
 let roadLineOffset = 0;
 const carImage = new Image();
 carImage.src = redCarImage;
-
-const mountainImageElement = new Image();
-mountainImageElement.src = mountainImage;
 
 let carPositionX = 0;
 const carMaxOffset = 150; // Allow driving on the grass
@@ -129,32 +147,20 @@ function drawCanvas() {
   // Clear the canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw the sky
-  ctx.fillStyle = 'skyblue';
-  ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
-
-  // Draw the mountain
-  const progress = trip.getDistance() / trip.goal;
-  const mountainWidth = canvas.width * (0.5 + progress);
-  const mountainHeight = canvas.width * (0.5 + progress);
-  const mountainX = (canvas.width - mountainWidth) / 2;
-  const mountainY = canvas.height / 2 - mountainHeight * (1 - progress);
-  ctx.drawImage(mountainImageElement, mountainX, mountainY, mountainWidth, mountainHeight);
-
   // Draw the grass
   ctx.fillStyle = 'green';
-  ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw the road
+  // Draw the road (extend to the top of the screen)
   ctx.fillStyle = 'gray';
   const roadWidth = canvas.width / 3;
   const roadX = (canvas.width - roadWidth) / 2;
-  ctx.fillRect(roadX, canvas.height / 2, roadWidth, canvas.height / 2);
+  ctx.fillRect(roadX, 0, roadWidth, canvas.height);
 
   // Clip to the road area
   ctx.save();
   ctx.beginPath();
-  ctx.rect(roadX, canvas.height / 2, roadWidth, canvas.height / 2);
+  ctx.rect(roadX, 0, roadWidth, canvas.height);
   ctx.clip();
 
   // Draw lane markings
@@ -162,12 +168,12 @@ function drawCanvas() {
   ctx.lineWidth = 4;
   const laneMarkingHeight = 20;
   const laneMarkingGap = 20;
-  roadLineOffset += vehicle.getSpeed() * 0.1;
+  roadLineOffset += vehicle.getSpeed() * 0.0075; // Slow down the line movement
   if (roadLineOffset > (laneMarkingHeight + laneMarkingGap)) {
     roadLineOffset = 0;
   }
 
-  for (let y = canvas.height / 2 + roadLineOffset; y < canvas.height; y += laneMarkingHeight + laneMarkingGap) {
+  for (let y = roadLineOffset - (laneMarkingHeight + laneMarkingGap); y < canvas.height; y += laneMarkingHeight + laneMarkingGap) {
     ctx.beginPath();
     ctx.moveTo(roadX + roadWidth / 2, y);
     ctx.lineTo(roadX + roadWidth / 2, y + laneMarkingHeight);
@@ -176,6 +182,21 @@ function drawCanvas() {
 
   // Restore the clipping region
   ctx.restore();
+
+  // Draw visible elements
+  const visibleElements = trip.getVisibleElements(1000); // View distance of 300 meters
+  visibleElements.forEach((element) => {
+    const roadWidth = canvas.width / 3;
+    const elementX = canvas.width / 2 + element.horizontalPosition * roadWidth; // Position based on horizontal offset
+    const elementY = canvas.height - (element.distance - trip.getDistance()); // Position based on distance, independent of line movement
+    ctx.drawImage(
+      element.sprite,
+      elementX - element.size / 2, // Center horizontally
+      elementY - element.size, // Position vertically
+      element.size, // Width
+      element.size // Height
+    );
+  });
 
   // Draw the vehicle (red car) with vibration
   const carWidth = 50;
