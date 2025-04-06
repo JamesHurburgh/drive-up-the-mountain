@@ -40,36 +40,37 @@ import { ref, onMounted, onUnmounted, computed, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { Trip } from '@/models/Trip';
 import { Vehicle } from '@/models/Vehicle';
-import redCarImage from '@/assets/red-car.png'; // Import the red-car asset
-import mountainImage from '@/assets/mountain.png'; // Import the mountain asset
+import { RoadSurface, getSurfaceEffect } from '@/models/RoadSurface';
+import redCarImage from '@/assets/red-car.png';
+import mountainImage from '@/assets/mountain.png';
 
 const isRunning = ref(false);
 let lastTimestamp = 0;
 const router = useRouter();
-const trip = reactive(new Trip(0, 1000)); // Initial distance: 0, goal: 1000 meters
-const vehicle = reactive(new Vehicle(0, 100, 200, 5, 2)); // Initial speed: 0, fuel: 100%, max speed: 50, acceleration: 5, drag: 2
+const trip = reactive(new Trip(0, 10000));
+const vehicle = reactive(new Vehicle(0, 100, 200, 5, 2));
 
 const distanceDisplay = computed(() => trip.getDistance().toFixed(2));
-const speedDisplay = computed(() => (vehicle.getSpeed()).toFixed(2)); // km/h
+const speedDisplay = computed(() => (vehicle.getSpeed()).toFixed(2));
 const fuelDisplay = computed(() => vehicle.getFuelLevel().toFixed(2));
 const distancePercentage = computed(() => ((trip.getDistance() / trip.goal) * 100).toFixed(2));
 
-let roadLineOffset = 0; // Offset for the road lines
+let roadLineOffset = 0;
 const carImage = new Image();
-carImage.src = redCarImage; // Preload the car image
+carImage.src = redCarImage;
 
 const mountainImageElement = new Image();
-mountainImageElement.src = mountainImage; // Preload the mountain image
+mountainImageElement.src = mountainImage;
 
-let carPositionX = 0; // Horizontal position of the car relative to the center of the road
-const carMaxOffset = 100; // Maximum horizontal offset from the center of the road
-let carMomentumX = 0; // Horizontal momentum of the car
-const carMomentumDecay = 0.95; // Decay factor for momentum
-const carAccelerationX = 1; // Horizontal acceleration when pressing left or right
+let carPositionX = 0;
+const carMaxOffset = 150; // Allow driving on the grass
+let carMomentumX = 0;
+const carMomentumDecay = 0.95;
+const carAccelerationX = 1;
 
-let isMovingLeft = false; // Track if the left arrow key is being held
-let isMovingRight = false; // Track if the right arrow key is being held
-const carAccelerationRate = 0.1; // Rate at which momentum increases when holding a key
+let isMovingLeft = false;
+let isMovingRight = false;
+const carAccelerationRate = 0.1;
 
 function toggleGame() {
   isRunning.value = !isRunning.value;
@@ -82,34 +83,39 @@ function toggleGame() {
 function gameTick(timestamp: number) {
   if (!isRunning.value) return;
 
-  const delta = (timestamp - lastTimestamp) / 1000; // Convert delta to seconds
+  const delta = (timestamp - lastTimestamp) / 1000;
   lastTimestamp = timestamp;
 
-  vehicle.onTick(delta); // Update vehicle stats based on physics
-  const distanceTraveled = vehicle.getSpeed() * delta; // Speed * time in seconds
+  vehicle.onTick(delta);
+  const distanceTraveled = vehicle.getSpeed() * delta;
   trip.updateDistance(distanceTraveled);
 
   // Update horizontal momentum based on key presses
   if (isMovingLeft) {
-    carMomentumX = Math.max(carMomentumX - carAccelerationRate, -carMaxOffset); // Gradually increase left momentum
+    carMomentumX = Math.max(carMomentumX - carAccelerationRate, -carMaxOffset);
   } else if (isMovingRight) {
-    carMomentumX = Math.min(carMomentumX + carAccelerationRate, carMaxOffset); // Gradually increase right momentum
+    carMomentumX = Math.min(carMomentumX + carAccelerationRate, carMaxOffset);
   }
 
   // Apply momentum decay and update car position
-  carMomentumX *= carMomentumDecay; // Apply decay to momentum
-  carPositionX = Math.max(-carMaxOffset, Math.min(carMaxOffset, carPositionX + carMomentumX)); // Update position with bounds
+  carMomentumX *= carMomentumDecay;
+  carPositionX = Math.max(-carMaxOffset, Math.min(carMaxOffset, carPositionX + carMomentumX));
+
+  // Determine the surface the car is driving on
+  const surface = Math.abs(carPositionX) > 100 ? RoadSurface.Grass : RoadSurface.Road;
+  const surfaceEffect = getSurfaceEffect(surface);
+
+  // Apply surface effects to the vehicle
+  vehicle.drag = 2 * surfaceEffect.dragMultiplier;
 
   if (trip.isGoalReached()) {
     console.log('Goal reached! Game over.');
     isRunning.value = false;
-    router.push('/game-finished'); // Use the path instead of the route name
+    router.push('/game-finished');
     return;
   }
 
-  drawCanvas(); // Update the canvas on each tick
-
-  console.log(`Distance traveled: ${trip.getDistance()} meters, Speed: ${vehicle.getSpeed()} m/s, Fuel level: ${vehicle.getFuelLevel()}%`);
+  drawCanvas();
   requestAnimationFrame(gameTick);
 }
 
@@ -128,11 +134,11 @@ function drawCanvas() {
   ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
 
   // Draw the mountain
-  const progress = trip.getDistance() / trip.goal; // Calculate progress as a percentage
-  const mountainWidth = canvas.width * (0.5 + progress); // Scale the mountain width
-  const mountainHeight = canvas.width * (0.5 + progress); // Scale the mountain height
-  const mountainX = (canvas.width - mountainWidth) / 2; // Center the mountain horizontally
-  const mountainY = canvas.height / 2 - mountainHeight * (1 - progress); // Move the mountain down as progress increases
+  const progress = trip.getDistance() / trip.goal;
+  const mountainWidth = canvas.width * (0.5 + progress);
+  const mountainHeight = canvas.width * (0.5 + progress);
+  const mountainX = (canvas.width - mountainWidth) / 2;
+  const mountainY = canvas.height / 2 - mountainHeight * (1 - progress);
   ctx.drawImage(mountainImageElement, mountainX, mountainY, mountainWidth, mountainHeight);
 
   // Draw the grass
@@ -156,9 +162,9 @@ function drawCanvas() {
   ctx.lineWidth = 4;
   const laneMarkingHeight = 20;
   const laneMarkingGap = 20;
-  roadLineOffset += vehicle.getSpeed() * 0.1; // Adjust the offset based on the vehicle's speed
+  roadLineOffset += vehicle.getSpeed() * 0.1;
   if (roadLineOffset > (laneMarkingHeight + laneMarkingGap)) {
-    roadLineOffset = 0; // Reset the offset when it exceeds the total marking height
+    roadLineOffset = 0;
   }
 
   for (let y = canvas.height / 2 + roadLineOffset; y < canvas.height; y += laneMarkingHeight + laneMarkingGap) {
@@ -174,7 +180,7 @@ function drawCanvas() {
   // Draw the vehicle (red car) with vibration
   const carWidth = 50;
   const carHeight = 50;
-  const vibration = Math.random() * vehicle.getSpeed() * 0.02 - vehicle.getSpeed() * 0.01; // Random vibration based on speed
+  const vibration = Math.random() * vehicle.getSpeed() * 0.02 - vehicle.getSpeed() * 0.01;
   ctx.drawImage(
     carImage,
     roadX + roadWidth / 2 - carWidth / 2 + carPositionX,
@@ -193,7 +199,7 @@ function stopAccelerating() {
 }
 
 function applyBrakes() {
-  vehicle.speed = Math.max(0, vehicle.speed * 0.9); // Reduce speed by 10 units, but not below 0
+  vehicle.speed = Math.max(0, vehicle.speed * 0.9);
 }
 
 function releaseBrakes() {
@@ -204,9 +210,9 @@ function handleKeyDown(event: KeyboardEvent) {
   if (event.key === 'ArrowUp') {
     startAccelerating();
   } else if (event.key === 'ArrowLeft') {
-    isMovingLeft = true; // Start moving left
+    isMovingLeft = true;
   } else if (event.key === 'ArrowRight') {
-    isMovingRight = true; // Start moving right
+    isMovingRight = true;
   } else if (event.key === 'ArrowDown') {
     applyBrakes();
   }
@@ -216,9 +222,9 @@ function handleKeyUp(event: KeyboardEvent) {
   if (event.key === 'ArrowUp') {
     stopAccelerating();
   } else if (event.key === 'ArrowLeft') {
-    isMovingLeft = false; // Stop moving left
+    isMovingLeft = false;
   } else if (event.key === 'ArrowRight') {
-    isMovingRight = false; // Stop moving right
+    isMovingRight = false;
   } else if (event.key === 'ArrowDown') {
     releaseBrakes();
   }
